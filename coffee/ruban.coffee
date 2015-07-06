@@ -1,3 +1,5 @@
+localStorageKey = '__change'
+
 class Ruban
   constructor: (@options = {}) ->
     @initOptions()
@@ -15,6 +17,8 @@ class Ruban
     setTimeout(=>
       @checkHash()
     , 250)
+
+    window.addEventListener('storage', @applyChange, false)
 
   initOptions: () ->
     @options.ratio              ?= 4/3
@@ -42,6 +46,7 @@ class Ruban
     key('home', @first)
     key('last', @last)
     key('c', @toggleDetails)
+    key('p', @togglePresenterMode)
 
   bindGestures: ->
     Hammer(document, {
@@ -75,8 +80,10 @@ class Ruban
   bindHashChange: ->
     $(window).on('hashchange', @checkHash)
 
-  resize: ->
-    [outerWidth, outerHeight] = [$(window).width(), $(window).height()]
+  resize: =>
+    parent = @$slides or $(window)
+    [outerWidth, outerHeight] = [parent.width(), parent.height()]
+    console.log(outerWidth, outerHeight)
     if outerWidth > @options.ratio * outerHeight
       min = outerHeight
       paddingV = @options.minPadding
@@ -111,7 +118,7 @@ class Ruban
   checkHash: =>
     hash = window.location.hash
     if slide = hash.substr(2)
-      @go(slide, {immediate: true})
+      @go(slide, immediate: true)
 
   highlight: ->
     hljs.initHighlightingOnLoad()
@@ -141,6 +148,7 @@ class Ruban
         $prev.addClass('step').trigger('step')
       else if @index > -1
         @prevStep()
+      @propagateChange('prevStep')
     else
       @prevSlide()
 
@@ -169,6 +177,8 @@ class Ruban
     $next = @$steps.eq(++@index)
     if $next.length
       $next.fadeIn().addClass('step').trigger('step')
+      rand = Math.random()
+      @propagateChange('nextStep')
     else
       @nextSlide()
 
@@ -204,6 +214,7 @@ class Ruban
       @translate($section, options.immediate)
       @current($section)
       @pagination()
+      @propagateChange('go', window.location.hash.replace(/#\//, ''), options)
 
   navigate: ($section) ->
     window.location.hash = "/#{$section.attr('id') || $section.index() + 1}"
@@ -222,13 +233,15 @@ class Ruban
     $section.addClass('active').trigger('active')
     @$current = $section
 
+    if @$comments
+      @$comments.empty().append($section.find('details').clone())
+
   pagination: ->
     @paginationText = []
     @paginationText.push @options.title if @options.title
-    if @options.pagination or @options.title
+    if @$slides? or @options.pagination or @options.title
       unless @$pagination
-        @$ruban.parent().append('<footer class="pagination"></footer>')
-        @$pagination = $('.pagination')
+        @$pagination = $('<footer class="pagination"></footer>').appendTo(@$commands or @$ruban.parent())
         @total = @$sections.length
       if @options.pagination
         @paginationText.push("#{@$current.index() + 1}/#{@total}")
@@ -261,5 +274,58 @@ class Ruban
       )
       $toc.append($ul)
 
+  togglePresenterMode: () =>
+    @$pagination?.remove()
+    delete @$pagination
+    if @$slides?
+      # Removes presenter markup, and the clock will automatically stops within 1s
+      $('body').removeClass('presenter').append(@$ruban)
+      @$commands.remove()
+      @$comments.remove()
+      @$slides.remove()
+      delete @$comments
+      delete @$commands
+      delete @$slides
+    else
+      # Add the presenter markup and starts clock
+      $('body').addClass('presenter').css('font-size', '')
+      @$slides = $('<article>').appendTo('body')
+      @$slides.append(@$ruban)
+      @$comments = $('<aside>').appendTo('body')
+      @$commands = $('<header>').appendTo('body')
+      @$commands.append('<div class="time">')
+      @updateTime()
+
+    @pagination()
+    @resize()
+
+  updateTime: () =>
+    now = new Date()
+    minutes = now.getMinutes();
+    @$commands?.find('.time').html "#{now.getHours()}:#{if minutes < 10 then '0' + minutes else minutes}"
+    setTimeout(@updateTime, 1000) if @$slides?
+
+  propagateChange: (operation, args...) =>
+    # Avoid looping: if the change comes from us, do not re*trigger it
+    return if @_propagating
+    # If no arguments were given, store a random number to force change detection in localStorage
+    unless args.length
+      args = [Math.random()]
+    # Store stringified value
+    localStorage[localStorageKey] = JSON.stringify({
+      op: operation,
+      args: args
+    })
+
+  applyChange: ({key, newValue}) =>
+    # Only our key matter
+    return unless key is localStorageKey
+    {op, args} = JSON.parse(newValue)
+    if op of @
+      # Use a propagation flag to avoid processing our own events
+      @_propagating = true
+      # Invoke method named after key, with relevant arguments as value
+      @[op].apply(@, args)
+      delete @_propagating
 
 window.Ruban = Ruban

@@ -11,6 +11,11 @@ You'll find the documentation on a Ruban: http://loicfrering.github.io/ruban/.
 Changelog
 ---------
 
+### 0.5.0
+
+* Add Presenter mode (toggle with 'p' key)
+* Allow tabs (or instances) of the same browser to be synchronized
+
 ### 0.4.0
 
 * Add `fontRatio` attribute

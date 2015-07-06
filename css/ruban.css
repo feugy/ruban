@@ -7,6 +7,49 @@ body {
   font-size: 100%;
   font-weight: 300;
 }
+body.presenter > aside {
+  position: absolute;
+  top: 50px;
+  bottom: 0;
+  left: 60%;
+  right: 0;
+  overflow: auto;
+  border-left: 2px solid black;
+  padding: 1em;
+  font-size: 2em;
+  font-style: italic;
+}
+body.presenter > article {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 40%;
+  overflow: hidden;
+}
+body.presenter > header {
+  position: absolute;
+  height: 50px;
+  top: 0;
+  bottom: auto;
+  left: 60%;
+  right: 0;
+  padding: 0.5em;
+  background: #333;
+  color: #FFF;
+}
+body.presenter > header .pagination,
+body.presenter > header .time {
+  position: static;
+  font-size: 30px;
+  display: inline-block;
+}
+body.presenter > header .pagination {
+  float: right;
+}
+body.presenter section {
+  border: none;
+}
 .ruban {
   height: 100%;
 }

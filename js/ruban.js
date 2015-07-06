@@ -1,17 +1,25 @@
 (function() {
-  var Ruban,
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+  var Ruban, localStorageKey,
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    __slice = [].slice;
+
+  localStorageKey = '__change';
 
   Ruban = (function() {
     function Ruban(options) {
       var _this = this;
       this.options = options != null ? options : {};
+      this.applyChange = __bind(this.applyChange, this);
+      this.propagateChange = __bind(this.propagateChange, this);
+      this.updateTime = __bind(this.updateTime, this);
+      this.togglePresenterMode = __bind(this.togglePresenterMode, this);
       this.next = __bind(this.next, this);
       this.last = __bind(this.last, this);
       this.toggleDetails = __bind(this.toggleDetails, this);
       this.prev = __bind(this.prev, this);
       this.first = __bind(this.first, this);
       this.checkHash = __bind(this.checkHash, this);
+      this.resize = __bind(this.resize, this);
       this.initOptions();
       this.$sections = $('section').wrapAll('<div class="ruban"></div>');
       this.$ruban = $('.ruban');
@@ -26,6 +34,7 @@
       setTimeout(function() {
         return _this.checkHash();
       }, 250);
+      window.addEventListener('storage', this.applyChange, false);
     }
 
     Ruban.prototype.initOptions = function() {
@@ -75,7 +84,8 @@
       key('left, up, backspace, k, h, pageup', this.prev);
       key('home', this.first);
       key('last', this.last);
-      return key('c', this.toggleDetails);
+      key('c', this.toggleDetails);
+      return key('p', this.togglePresenterMode);
     };
 
     Ruban.prototype.bindGestures = function() {
@@ -126,8 +136,10 @@
     };
 
     Ruban.prototype.resize = function() {
-      var height, min, outerHeight, outerWidth, paddingH, paddingV, width, _ref;
-      _ref = [$(window).width(), $(window).height()], outerWidth = _ref[0], outerHeight = _ref[1];
+      var height, min, outerHeight, outerWidth, paddingH, paddingV, parent, width, _ref;
+      parent = this.$slides || $(window);
+      _ref = [parent.width(), parent.height()], outerWidth = _ref[0], outerHeight = _ref[1];
+      console.log(outerWidth, outerHeight);
       if (outerWidth > this.options.ratio * outerHeight) {
         min = outerHeight;
         paddingV = this.options.minPadding;
@@ -209,10 +221,11 @@
       $prev = this.$steps.eq(--this.index);
       if (!(this.index < -1)) {
         if ($prev.is(':visible')) {
-          return $prev.addClass('step').trigger('step');
+          $prev.addClass('step').trigger('step');
         } else if (this.index > -1) {
-          return this.prevStep();
+          this.prevStep();
         }
+        return this.propagateChange('prevStep');
       } else {
         return this.prevSlide();
       }
@@ -251,11 +264,13 @@
     };
 
     Ruban.prototype.nextStep = function() {
-      var $next;
+      var $next, rand;
       this.$steps.eq(this.index).removeClass('step');
       $next = this.$steps.eq(++this.index);
       if ($next.length) {
-        return $next.fadeIn().addClass('step').trigger('step');
+        $next.fadeIn().addClass('step').trigger('step');
+        rand = Math.random();
+        return this.propagateChange('nextStep');
       } else {
         return this.nextSlide();
       }
@@ -305,7 +320,8 @@
         this.navigate($section);
         this.translate($section, options.immediate);
         this.current($section);
-        return this.pagination();
+        this.pagination();
+        return this.propagateChange('go', window.location.hash.replace(/#\//, ''), options);
       }
     };
 
@@ -332,7 +348,10 @@
         this.$current.removeClass('active').trigger('inactive');
       }
       $section.addClass('active').trigger('active');
-      return this.$current = $section;
+      this.$current = $section;
+      if (this.$comments) {
+        return this.$comments.empty().append($section.find('details').clone());
+      }
     };
 
     Ruban.prototype.pagination = function() {
@@ -340,10 +359,9 @@
       if (this.options.title) {
         this.paginationText.push(this.options.title);
       }
-      if (this.options.pagination || this.options.title) {
+      if ((this.$slides != null) || this.options.pagination || this.options.title) {
         if (!this.$pagination) {
-          this.$ruban.parent().append('<footer class="pagination"></footer>');
-          this.$pagination = $('.pagination');
+          this.$pagination = $('<footer class="pagination"></footer>').appendTo(this.$commands || this.$ruban.parent());
           this.total = this.$sections.length;
         }
         if (this.options.pagination) {
@@ -378,6 +396,74 @@
           })).appendTo($ul);
         });
         return $toc.append($ul);
+      }
+    };
+
+    Ruban.prototype.togglePresenterMode = function() {
+      var _ref;
+      if ((_ref = this.$pagination) != null) {
+        _ref.remove();
+      }
+      delete this.$pagination;
+      if (this.$slides != null) {
+        $('body').removeClass('presenter').append(this.$ruban);
+        this.$commands.remove();
+        this.$comments.remove();
+        this.$slides.remove();
+        delete this.$comments;
+        delete this.$commands;
+        delete this.$slides;
+      } else {
+        $('body').addClass('presenter').css('font-size', '');
+        this.$slides = $('<article>').appendTo('body');
+        this.$slides.append(this.$ruban);
+        this.$comments = $('<aside>').appendTo('body');
+        this.$commands = $('<header>').appendTo('body');
+        this.$commands.append('<div class="time">');
+        this.updateTime();
+      }
+      this.pagination();
+      return this.resize();
+    };
+
+    Ruban.prototype.updateTime = function() {
+      var minutes, now, _ref;
+      now = new Date();
+      minutes = now.getMinutes();
+      if ((_ref = this.$commands) != null) {
+        _ref.find('.time').html("" + (now.getHours()) + ":" + (minutes < 10 ? '0' + minutes : minutes));
+      }
+      if (this.$slides != null) {
+        return setTimeout(this.updateTime, 1000);
+      }
+    };
+
+    Ruban.prototype.propagateChange = function() {
+      var args, operation;
+      operation = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+      if (this._propagating) {
+        return;
+      }
+      if (!args.length) {
+        args = [Math.random()];
+      }
+      return localStorage[localStorageKey] = JSON.stringify({
+        op: operation,
+        args: args
+      });
+    };
+
+    Ruban.prototype.applyChange = function(_arg) {
+      var args, key, newValue, op, _ref;
+      key = _arg.key, newValue = _arg.newValue;
+      if (key !== localStorageKey) {
+        return;
+      }
+      _ref = JSON.parse(newValue), op = _ref.op, args = _ref.args;
+      if (op in this) {
+        this._propagating = true;
+        this[op].apply(this, args);
+        return delete this._propagating;
       }
     };
 
