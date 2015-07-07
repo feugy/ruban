@@ -293,6 +293,7 @@ class Ruban
       @$comments = $('<aside>').appendTo('body')
       @$commands = $('<header>').appendTo('body')
       @$commands.append('<div class="time">')
+      @current(@$current)
       @updateTime()
 
     @pagination()

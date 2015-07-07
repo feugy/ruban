@@ -419,6 +419,7 @@
         this.$comments = $('<aside>').appendTo('body');
         this.$commands = $('<header>').appendTo('body');
         this.$commands.append('<div class="time">');
+        this.current(this.$current);
         this.updateTime();
       }
       this.pagination();
