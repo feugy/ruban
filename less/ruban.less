@@ -8,6 +8,10 @@ html, body {
   font-weight: 300;
 }
 
+summary::-webkit-details-marker {
+  display: none
+}
+
 body.presenter {
 
   > aside {
@@ -96,10 +100,6 @@ section {
     transition: bottom .5s;
     opacity: 0;
     bottom: -100%;
-
-    summary::-webkit-details-marker {
-      display: none
-    }
 
     p {
       margin: 0 0 .5em 0;

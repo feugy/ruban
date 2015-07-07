@@ -139,7 +139,6 @@
       var height, min, outerHeight, outerWidth, paddingH, paddingV, parent, width, _ref;
       parent = this.$slides || $(window);
       _ref = [parent.width(), parent.height()], outerWidth = _ref[0], outerHeight = _ref[1];
-      console.log(outerWidth, outerHeight);
       if (outerWidth > this.options.ratio * outerHeight) {
         min = outerHeight;
         paddingV = this.options.minPadding;

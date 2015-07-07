@@ -83,7 +83,6 @@ class Ruban
   resize: =>
     parent = @$slides or $(window)
     [outerWidth, outerHeight] = [parent.width(), parent.height()]
-    console.log(outerWidth, outerHeight)
     if outerWidth > @options.ratio * outerHeight
       min = outerHeight
       paddingV = @options.minPadding
