@@ -213,6 +213,7 @@ class Ruban
       @translate($section, options.immediate)
       @current($section)
       @pagination()
+      @$ruban.trigger('change', current: @$current)
       @propagateChange('go', window.location.hash.replace(/#\//, ''), options)
 
   navigate: ($section) ->
@@ -233,7 +234,9 @@ class Ruban
     @$current = $section
 
     if @$comments
+      # If in presenter mode, copy some data to header and comments
       @$comments.empty().append($section.find('details').clone())
+      @$commands.find('.timing').data('timing', (+$section.data('timing')) * 60)
 
   pagination: ->
     @paginationText = []
@@ -276,7 +279,8 @@ class Ruban
   togglePresenterMode: () =>
     @$pagination?.remove()
     delete @$pagination
-    if @$slides?
+    active = @$slides?
+    if active
       # Removes presenter markup, and the clock will automatically stops within 1s
       $('body').removeClass('presenter').append(@$ruban)
       @$commands.remove()
@@ -292,20 +296,27 @@ class Ruban
       @$slides.append(@$ruban)
       @$comments = $('<aside>').appendTo('body')
       @$commands = $('<header>').appendTo('body')
-      @$commands.append('<div class="time">')
+      @$commands.append('<div class="time"></div><div class="time-left"><span class="timing"></span> left</div>')
       @current(@$current)
       @updateTime()
 
     @pagination()
     @resize()
-    # trigger event when changing
-    $('body').trigger('toggle-presenter', {active: $('body').hasClass('presenter'), current: @$current})
+    # trigger event when toggleling presenter mode
+    @$ruban.trigger('toggle-presenter', active: not active, current: @$current)
 
   updateTime: () =>
+    setTimeout(@updateTime, 1000) if @$slides?
+    return unless @$commands?
     now = new Date()
     minutes = now.getMinutes();
-    @$commands?.find('.time').html "#{now.getHours()}:#{if minutes < 10 then '0' + minutes else minutes}"
-    setTimeout(@updateTime, 1000) if @$slides?
+    @$commands.find('.time').html "#{now.getHours()}:#{if minutes < 10 then '0' + minutes else minutes}"
+    timing = @$commands.find('.timing')
+    left = (+timing.data('timing')) - 1
+    left = 0 if isNaN(left) or left < 0
+    timing.html("#{Math.floor(left/60)}' #{left%60}''")
+    timing.data('timing', left)
+    timing.parent().toggleClass('timeout', left < 10)
 
   propagateChange: (operation, args...) =>
     # Avoid looping: if the change comes from us, do not re*trigger it

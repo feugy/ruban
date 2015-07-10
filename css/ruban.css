@@ -41,14 +41,20 @@ body.presenter > header {
   background: #333;
   color: #FFF;
 }
-body.presenter > header .pagination,
-body.presenter > header .time {
+body.presenter > header > * {
   position: static;
   font-size: 30px;
   display: inline-block;
 }
 body.presenter > header .pagination {
   float: right;
+}
+body.presenter > header .time-left {
+  display: inline-block;
+  padding-left: 1em;
+}
+body.presenter > header .time-left.timeout {
+  color: red;
 }
 body.presenter section {
   border: none;
@@ -83,6 +89,7 @@ section h1:only-child {
 }
 section details {
   transition: bottom .5s;
+  display: none;
   opacity: 0;
   bottom: -100%;
 }
@@ -91,6 +98,8 @@ section details p {
 }
 section details.opened {
   position: absolute;
+  display: block;
+  height: auto;
   z-index: 1;
   opacity: 1;
   bottom: 10px;

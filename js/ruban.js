@@ -320,6 +320,9 @@
         this.translate($section, options.immediate);
         this.current($section);
         this.pagination();
+        this.$ruban.trigger('change', {
+          current: this.$current
+        });
         return this.propagateChange('go', window.location.hash.replace(/#\//, ''), options);
       }
     };
@@ -349,7 +352,8 @@
       $section.addClass('active').trigger('active');
       this.$current = $section;
       if (this.$comments) {
-        return this.$comments.empty().append($section.find('details').clone());
+        this.$comments.empty().append($section.find('details').clone());
+        return this.$commands.find('.timing').data('timing', (+$section.data('timing')) * 60);
       }
     };
 
@@ -399,12 +403,13 @@
     };
 
     Ruban.prototype.togglePresenterMode = function() {
-      var _ref;
+      var active, _ref;
       if ((_ref = this.$pagination) != null) {
         _ref.remove();
       }
       delete this.$pagination;
-      if (this.$slides != null) {
+      active = this.$slides != null;
+      if (active) {
         $('body').removeClass('presenter').append(this.$ruban);
         this.$commands.remove();
         this.$comments.remove();
@@ -418,28 +423,37 @@
         this.$slides.append(this.$ruban);
         this.$comments = $('<aside>').appendTo('body');
         this.$commands = $('<header>').appendTo('body');
-        this.$commands.append('<div class="time">');
+        this.$commands.append('<div class="time"></div><div class="time-left"><span class="timing"></span> left</div>');
         this.current(this.$current);
         this.updateTime();
       }
       this.pagination();
       this.resize();
-      return $('body').trigger('toggle-presenter', {
-        active: $('body').hasClass('presenter'),
+      return this.$ruban.trigger('toggle-presenter', {
+        active: !active,
         current: this.$current
       });
     };
 
     Ruban.prototype.updateTime = function() {
-      var minutes, now, _ref;
+      var left, minutes, now, timing;
+      if (this.$slides != null) {
+        setTimeout(this.updateTime, 1000);
+      }
+      if (this.$commands == null) {
+        return;
+      }
       now = new Date();
       minutes = now.getMinutes();
-      if ((_ref = this.$commands) != null) {
-        _ref.find('.time').html("" + (now.getHours()) + ":" + (minutes < 10 ? '0' + minutes : minutes));
+      this.$commands.find('.time').html("" + (now.getHours()) + ":" + (minutes < 10 ? '0' + minutes : minutes));
+      timing = this.$commands.find('.timing');
+      left = (+timing.data('timing')) - 1;
+      if (isNaN(left) || left < 0) {
+        left = 0;
       }
-      if (this.$slides != null) {
-        return setTimeout(this.updateTime, 1000);
-      }
+      timing.html("" + (Math.floor(left / 60)) + "' " + (left % 60) + "''");
+      timing.data('timing', left);
+      return timing.parent().toggleClass('timeout', left < 10);
     };
 
     Ruban.prototype.propagateChange = function() {
