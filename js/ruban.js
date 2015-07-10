@@ -423,7 +423,11 @@
         this.updateTime();
       }
       this.pagination();
-      return this.resize();
+      this.resize();
+      return $('body').trigger('toggle-presenter', {
+        active: $('body').hasClass('presenter'),
+        current: this.$current
+      });
     };
 
     Ruban.prototype.updateTime = function() {

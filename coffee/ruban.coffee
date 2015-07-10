@@ -298,6 +298,8 @@ class Ruban
 
     @pagination()
     @resize()
+    # trigger event when changing
+    $('body').trigger('toggle-presenter', {active: $('body').hasClass('presenter'), current: @$current})
 
   updateTime: () =>
     now = new Date()
